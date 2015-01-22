@@ -27,14 +27,22 @@ class Logger(marker: String, fsName: String) {
    * @param fileName Name of the file to be written
    * @param data Bytes to be written
    */
-  def write(fileName: String, data: Byte) {
+  def write(fileName: String, data: Array[Byte]): Unit = {
+    val dir = new Path(marker)
     val path = new Path(marker + separator + fileName)
 
-    if (!hdfs.exists(destination)) {
-      hdfs.mkdir(new Path(marker))
+    if (!hdfs.exists(dir)) {
+      hdfs.mkdirs(dir)
     }
 
-    val input: FSDataOutputStream = hdfs.create(path)
-    input.write(data)
+    if (hdfs.exists(path)) {
+      val input: FSDataOutputStream = hdfs.append(path)
+      input.write(data)
+      input.close()
+    } else {
+      val input: FSDataOutputStream = hdfs.create(path)
+      input.write(data)
+      input.close()
+    }
   }
 }
