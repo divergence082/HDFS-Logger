@@ -1,8 +1,9 @@
+
+
 package hdfslogger
 
-import scala.collection.immutable._
 import org.apache.hadoop.conf.Configuration
-import org.apache.hadoop.fs.{Path, FileSystem, FSDataOutputStream}
+import org.apache.hadoop.fs.{FSDataOutputStream, FileSystem, Path}
 
 
 /**
