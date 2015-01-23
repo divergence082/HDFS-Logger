@@ -2,28 +2,27 @@
 
 package hdfslogger
 
-import scala.collection.mutable.ArrayBuffer
 import java.io.InputStream
 
 
 /**
  * @constructor
  * @param marker Logs identifier
- * @param fsName The value of fs.default.name or fs.defaultFS properties in
- *               core-site.xml
+ * @param period Time laps of log file in seconds
+ * @param hadoopConfPath A path to hadoop configurations
  */
-class HDFSLogger(marker: String, fsName: String) {
+class HDFSLogger(marker: String, period: Int,hadoopConfPath: String) {
 
-  var data: Array[Byte] = new Array(0)
+  private val laps = period*1000
+
+  private var timestampPivot = System.currentTimeMillis()
+  private var data: Array[Byte] = new Array(0)
+
 
   /**
    * @param stream Input stream
    */
   def read(stream: InputStream): Unit = {
-//    while(true) {
-//      println(stream.read())
-//    }
-
     Stream
         .continually(stream.read.toByte)
         .takeWhile(-1 !=)
@@ -33,17 +32,26 @@ class HDFSLogger(marker: String, fsName: String) {
 
   /**
    * @param byte Byte
-   * @return The same data
    */
-  private def process(byte: Byte): Array[Byte] = {
+  private def process(byte: Byte) = {
     data = data :+ byte
 
-    if (!data.isEmpty) {
-//      another logic should be here
+    if (!data.isEmpty && byte == 10) {
       log(data)
+      data = new Array(0)
+    }
+  }
+
+
+  /**
+   * @return Filename in format startTimestamp_stopTimestamp
+   */
+  private def generateFilename(): String = {
+    if (System.currentTimeMillis() - timestampPivot >= laps) {
+      timestampPivot = System.currentTimeMillis()
     }
 
-    data
+    timestampPivot.toString + "_" + (timestampPivot + laps).toString
   }
 
 
@@ -51,8 +59,11 @@ class HDFSLogger(marker: String, fsName: String) {
    * @param data Data to log
    */
   private def log(data: Array[Byte]): Unit = {
-    val logger = new Logger(marker, fsName)
-    logger.write("123", data)
+    val logger = new Logger(marker, hadoopConfPath)
+
+    val timestamp = System.currentTimeMillis()
+    logger.write(generateFilename(), data)
+    println(System.currentTimeMillis() - timestamp)
   }
 
 }
@@ -67,7 +78,7 @@ object HDFSLogger {
    * @param args
    */
   def main(args: Array[String]) {
-    val logger = new HDFSLogger(args(0), args(1))
+    val logger = new HDFSLogger(args(0), args(1).toInt, args(2))
     logger.read(System.in)
   }
 
