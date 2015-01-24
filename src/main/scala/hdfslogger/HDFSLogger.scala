@@ -2,67 +2,9 @@
 
 package hdfslogger
 
-import java.io.InputStream
-
-
-/**
- * @constructor
- * @param marker Logs identifier
- * @param period Time laps of log file in seconds
- * @param hadoopConfPath A path to hadoop configurations
- */
-class HDFSLogger(marker: String, period: Int, hadoopConfPath: String) {
-
-  private val logger = new Logger(marker, hadoopConfPath)
-  private val laps = period*1000
-  private var timestampPivot = System.currentTimeMillis()
-  private var data: Array[Byte] = new Array(0)
-
-
-  /**
-   * @param stream Input stream
-   */
-  def read(stream: InputStream): Unit = {
-    Stream
-        .continually(stream.read.toByte)
-        .takeWhile(-1 !=)
-        .foreach(process)
-  }
-
-
-  /**
-   * @param byte Byte
-   */
-  private def process(byte: Byte) = {
-    data = data :+ byte
-
-    if (!data.isEmpty && byte == 10) {
-      log(data)
-      data = new Array(0)
-    }
-  }
-
-
-  /**
-   * @return Filename in format startTimestamp_stopTimestamp
-   */
-  private def generateFilename(): String = {
-    if (System.currentTimeMillis() - timestampPivot >= laps) {
-      timestampPivot = System.currentTimeMillis()
-    }
-
-    timestampPivot.toString + "_" + (timestampPivot + laps).toString
-  }
-
-
-  /**
-   * @param data Data to log
-   */
-  private def log(data: Array[Byte]): Unit = {
-    logger.write(generateFilename(), data)
-  }
-
-}
+import java.io.File
+import org.apache.hadoop.conf.Configuration
+import org.apache.commons.io.FilenameUtils
 
 
 /**
@@ -71,11 +13,40 @@ class HDFSLogger(marker: String, period: Int, hadoopConfPath: String) {
 object HDFSLogger {
 
   /**
-   * @param args Command line arguments
+   * @param args Command line arguments:
+   *             0: dirname: A directory name to store files,
+   *             1: hadoopDir: A path to hadoop configurations,
+   *                           usually /etc/hadoop/conf,
+   *             2: writerType: 'File' for usual data storing and
+   *                            'SeqFile' for file based data structures,
+   *             3: period: Time laps for log rotation.
    */
   def main(args: Array[String]) {
-    val logger = new HDFSLogger(args(0), args(1).toInt, args(2))
-    logger.read(System.in)
+
+    val hadoopDir: String = args(1)
+    val config = new Configuration()
+
+    config.addResource(createFilePath(hadoopDir, "core-site.xml"))
+    config.addResource(createFilePath(hadoopDir, "hdfs-site.xml"))
+
+    val writer: HDFSWriter = args(2) match {
+      case "SeqFile" => new SeqFileWriter(config, args(0))
+      case _ => new HDFSWriter(config, args(0))
+    }
+
+    val streamHandler = new StreamHandler(writer, args(3).toInt)
+    streamHandler.read(System.in)
   }
 
+
+  /**
+   * @param dirPath A name of directory in HDFS
+   * @param filename A name of file in HDFS
+   * @param separator Directory separator
+   * @return Full path to file
+   */
+  def createFilePath(dirPath: String, filename: String,
+                     separator: String = File.separator): String = {
+    FilenameUtils.normalizeNoEndSeparator(dirPath) + separator + filename
+  }
 }
