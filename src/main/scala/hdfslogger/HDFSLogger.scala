@@ -11,10 +11,10 @@ import java.io.InputStream
  * @param period Time laps of log file in seconds
  * @param hadoopConfPath A path to hadoop configurations
  */
-class HDFSLogger(marker: String, period: Int,hadoopConfPath: String) {
+class HDFSLogger(marker: String, period: Int, hadoopConfPath: String) {
 
+  private val logger = new Logger(marker, hadoopConfPath)
   private val laps = period*1000
-
   private var timestampPivot = System.currentTimeMillis()
   private var data: Array[Byte] = new Array(0)
 
@@ -59,11 +59,7 @@ class HDFSLogger(marker: String, period: Int,hadoopConfPath: String) {
    * @param data Data to log
    */
   private def log(data: Array[Byte]): Unit = {
-    val logger = new Logger(marker, hadoopConfPath)
-
-    val timestamp = System.currentTimeMillis()
     logger.write(generateFilename(), data)
-    println(System.currentTimeMillis() - timestamp)
   }
 
 }
@@ -75,7 +71,7 @@ class HDFSLogger(marker: String, period: Int,hadoopConfPath: String) {
 object HDFSLogger {
 
   /**
-   * @param args
+   * @param args Command line arguments
    */
   def main(args: Array[String]) {
     val logger = new HDFSLogger(args(0), args(1).toInt, args(2))

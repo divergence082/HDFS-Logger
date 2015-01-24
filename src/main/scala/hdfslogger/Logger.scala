@@ -22,6 +22,11 @@ class Logger(marker: String, hadoopConfPath: String) {
   config.addResource(hadoopConfPath + separator + "hdfs-site.xml")
 
   private val hdfs = FileSystem.get(config)
+  private val dir = new Path(marker)
+
+  if (!hdfs.exists(dir)) {
+    hdfs.mkdirs(dir)
+  }
 
 
   /**
@@ -29,12 +34,7 @@ class Logger(marker: String, hadoopConfPath: String) {
    * @param data Bytes to be written
    */
   def write(fileName: String, data: Array[Byte]): Unit = {
-    val dir = new Path(marker)
     val path = new Path(marker + separator + fileName)
-
-    if (!hdfs.exists(dir)) {
-      hdfs.mkdirs(dir)
-    }
 
     if (hdfs.exists(path)) {
       val input: FSDataOutputStream = hdfs.append(path)
