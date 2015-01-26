@@ -14,27 +14,15 @@ object HDFSLogger {
 
   /**
    * @param args Command line arguments:
-   *             0: dirname: A directory name to store files,
-   *             1: hadoopDir: A path to hadoop configurations,
-   *                           usually /etc/hadoop/conf,
-   *             2: writerType: 'File' for usual data storing and
-   *                            'SeqFile' for file based data structures,
-   *             3: period: Time laps for log rotation.
+   *             0: url: The value of fs.default.name or fs.defaultFS,
+   *             1: dirname: A directory name to store files,
+   *             2: period: Time laps for log rotation.
    */
   def main(args: Array[String]) {
 
-    val hadoopDir: String = args(1)
-    val config = new Configuration()
+    val storage: HStorage = new HStorage(args(0), args(1))
+    val streamHandler = new StreamHandler(storage, args(2).toInt)
 
-    config.addResource(createFilePath(hadoopDir, "core-site.xml"))
-    config.addResource(createFilePath(hadoopDir, "hdfs-site.xml"))
-
-    val writer: HDFSWriter = args(2) match {
-      case "SeqFile" => new SeqFileWriter(config, args(0))
-      case _ => new HDFSWriter(config, args(0))
-    }
-
-    val streamHandler = new StreamHandler(writer, args(3).toInt)
     streamHandler.read(System.in)
   }
 
