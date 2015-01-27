@@ -1,22 +1,18 @@
 
-
 package hdfslogger
 
 import java.net.URI
+import org.apache.commons.io.FilenameUtils
 import org.apache.hadoop.conf.Configuration
-import org.apache.hadoop.fs.{
-                              FileSystem,
-                              FSDataInputStream,
-                              FSDataOutputStream,
-                              Path
-                            }
+import org.apache.hadoop.fs.{FileSystem, Path}
+import org.apache.hadoop.io.{Writable, SequenceFile}
 
 
 /**
  * @param uri HDFS uri
  * @param dirPath A path to directory to store files
  */
-class HStorage(uri: String, dirPath: String) extends Storage {
+class HStorage(uri: String, dirPath: String) {
 
   val dir = new Path(dirPath)
   val config = new Configuration()
@@ -31,42 +27,21 @@ class HStorage(uri: String, dirPath: String) extends Storage {
    * @return A full path of file to be stored
    */
   def getPath(filename: String): Path = {
-    new Path(HDFSLogger.createFilePath(dirPath, filename, "/"))
-  }
-
-
-  /**
-   * @param filename Name of the file to store to HDFS
-   * @param container Container to store data was read
-   */
-  def read(filename: String, container: Array[Byte]): Unit = {
-
-    val stream: FSDataInputStream = hdfs.open(getPath(filename))
-
-    Stream
-        .continually(stream.read(container).toByte)
-        .takeWhile(-1 !=)
-
-    stream.close()
+    new Path(FilenameUtils.normalizeNoEndSeparator(dirPath) + "/" + filename)
   }
 
 
   /**
    * @param filename A name of file in HDFS
-   * @param container Container for data to store
+   * @param key A Key to store data
+   * @param value Data to store
    */
-  def write(filename: String, container: Array[Byte]): Unit = {
+  def write(filename: String, key: Writable, value: Writable): Unit = {
+    val writer = new SequenceFile.Writer(hdfs, config,
+      getPath(filename), key.getClass, value.getClass)
 
-    val path: Path = getPath(filename)
-    val stream: FSDataOutputStream = if (hdfs.exists(path)) {
-      hdfs.append(path)
-    } else {
-      hdfs.create(path)
-    }
-
-    stream.write(container)
-    stream.close()
+    writer.append(key, value)
+    writer.close()
   }
-
 
 }

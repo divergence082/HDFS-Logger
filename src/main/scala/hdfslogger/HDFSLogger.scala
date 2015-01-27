@@ -2,20 +2,25 @@
 
 package hdfslogger
 
-import java.io.{InputStream, File}
-import org.apache.commons.io.FilenameUtils
-import ru.livetex.PacketInputStreamReader
+import org.apache.hadoop.io.{LongWritable, IntWritable, Writable}
+import org.apache.hadoop.mapred.join.TupleWritable
+import ru.livetex.io.codec.{PacketInputStreamReader, PacketType}
 
 
 /**
+ * @param uri HDFS uri
+ * @param dirPath A path to directory to store files
  * @param period Time laps for log rotation in seconds
  */
-class HDFSLogger(period: Int) {
+class HDFSLogger(uri: String, dirPath: String, period: Int) {
 
   private val codec = PacketInputStreamReader(System.in)
+  private val storage = HStorage(uri, dirPath)
+
   private val laps = period*1000
   private var timestampPivot = System.currentTimeMillis()
-  private var data: Array[Byte] = new Array(0)
+
+  type Packet = (PacketType, Seq[Array[Byte]])
 
 
   /**
@@ -29,33 +34,35 @@ class HDFSLogger(period: Int) {
     timestampPivot.toString + "_" + (timestampPivot + laps).toString
   }
 
-  def logToFile(byte: Byte): Unit = {
-    data = data :+
-    codec.encode(data) match {
-      case None => None
-      case Some(s) =>
-        storage.write(getFilename, s)
-        data = new Array(0)
-    }
-  }
 
+  /**
+   * @param data Parsed data
+   */
+  private def log(data: Packet): Unit = {
 
-  def logToSeqFile(): Unit = {
+    val sequences: Seq[Array[Byte]] = data._2
+    val writables: Array[Writable] = (
+        new IntWritable(data._1),
+        new TupleWritable(sequences.foreach(Array[Byte] _)))
 
+    val key: LongWritable = new LongWritable(System.currentTimeMillis())
+    val value: TupleWritable = new TupleWritable(writables)
+    storage.write(getFilename(), key, value)
   }
 
 
   /**
-   * @param stream
-   * @param log
+   *
    */
-  def read(stream: InputStream, log: ()): Unit = {
-    val stream: InputStream = System.in
-
+  def process(): Unit = {
     Stream
-        .continually(stream.read.toByte)
-        .taleWhile(-1 !=)
-        .foreach(process)
+        .continually(codec.readPacket)
+        .takeWhile(-1 !=)
+        .foreach{result: Packet => result match {
+            case None => None
+            case Some(s) => log(result)
+          }
+        }
   }
 
 }
@@ -73,19 +80,8 @@ object HDFSLogger {
    *             2: period: Time laps for log rotation.
    */
   def main(args: Array[String]) {
-    val codec = new PacketInputStreamReader(System.in)
-
+    val logger = new HDFSLogger(args(0), args(1), args(2).toInt)
+    logger.process()
   }
 
-
-  /**
-   * @param dirPath A name of directory in HDFS
-   * @param filename A name of file in HDFS
-   * @param separator Directory separator
-   * @return Full path to file
-   */
-  def createFilePath(dirPath: String, filename: String,
-                     separator: String = File.separator): String = {
-    FilenameUtils.normalizeNoEndSeparator(dirPath) + separator + filename
-  }
 }
