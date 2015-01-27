@@ -49,7 +49,7 @@ class HDFSLogger(uri: String, dirPath: String, period: Int) {
           new BytesWritable(item)).toArray
 
         val writables: Array[Writable] = Array(
-          new IntWritable(packet._1.toString.toInt),
+          new IntWritable(packet._1.id),
           new TupleWritable(messages))
 
         val key: LongWritable = new LongWritable(System.currentTimeMillis())
