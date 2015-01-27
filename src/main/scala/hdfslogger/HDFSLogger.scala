@@ -2,7 +2,7 @@
 
 package hdfslogger
 
-import org.apache.hadoop.io.{LongWritable, IntWritable, Writable}
+import org.apache.hadoop.io.{BytesWritable, LongWritable, IntWritable, Writable}
 import org.apache.hadoop.mapred.join.TupleWritable
 import ru.livetex.io.codec.{PacketInputStreamReader, PacketType}
 
@@ -40,10 +40,12 @@ class HDFSLogger(uri: String, dirPath: String, period: Int) {
    */
   private def log(data: Packet): Unit = {
 
-    val sequences: Seq[Array[Byte]] = data._2
-    val writables: Array[Writable] = (
+    val messages: Array[Writable] = (for (item <- data._2) yield
+        new BytesWritable(item)).toArray
+
+    val writables: Array[Writable] = Array(
         new IntWritable(data._1),
-        new TupleWritable(sequences.foreach(Array[Byte] _)))
+        new TupleWritable(messages))
 
     val key: LongWritable = new LongWritable(System.currentTimeMillis())
     val value: TupleWritable = new TupleWritable(writables)
