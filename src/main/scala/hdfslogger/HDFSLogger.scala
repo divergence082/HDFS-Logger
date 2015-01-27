@@ -2,9 +2,11 @@
 
 package hdfslogger
 
+import java.io.DataInputStream
 import org.apache.hadoop.io.{BytesWritable, LongWritable, IntWritable, Writable}
 import org.apache.hadoop.mapred.join.TupleWritable
-import ru.livetex.io.codec.{PacketInputStreamReader, PacketType}
+import ru.livetex.io.codec.PacketInputStreamReader
+import ru.livetex.io.codec.PacketType.PacketType
 
 
 /**
@@ -14,8 +16,9 @@ import ru.livetex.io.codec.{PacketInputStreamReader, PacketType}
  */
 class HDFSLogger(uri: String, dirPath: String, period: Int) {
 
-  private val codec = PacketInputStreamReader(System.in)
-  private val storage = HStorage(uri, dirPath)
+  private val codec = new PacketInputStreamReader(
+    new DataInputStream(System.in))
+  private val storage =new HStorage(uri, dirPath)
 
   private val laps = period*1000
   private var timestampPivot = System.currentTimeMillis()
@@ -38,18 +41,21 @@ class HDFSLogger(uri: String, dirPath: String, period: Int) {
   /**
    * @param data Parsed data
    */
-  private def log(data: Packet): Unit = {
+  private def log(data: Option[Packet]): Unit = {
+    data match {
+      case None => None
+      case Some(packet: Packet) =>
+        val messages: Array[Writable] = (for (item <- packet._2) yield
+          new BytesWritable(item)).toArray
 
-    val messages: Array[Writable] = (for (item <- data._2) yield
-        new BytesWritable(item)).toArray
+        val writables: Array[Writable] = Array(
+          new IntWritable(packet._1.toString.toInt),
+          new TupleWritable(messages))
 
-    val writables: Array[Writable] = Array(
-        new IntWritable(data._1),
-        new TupleWritable(messages))
-
-    val key: LongWritable = new LongWritable(System.currentTimeMillis())
-    val value: TupleWritable = new TupleWritable(writables)
-    storage.write(getFilename(), key, value)
+        val key: LongWritable = new LongWritable(System.currentTimeMillis())
+        val value: TupleWritable = new TupleWritable(writables)
+        storage.write(getFilename(), key, value)
+    }
   }
 
 
@@ -58,13 +64,7 @@ class HDFSLogger(uri: String, dirPath: String, period: Int) {
    */
   def process(): Unit = {
     Stream
-        .continually(codec.readPacket)
-        .takeWhile(-1 !=)
-        .foreach{result: Packet => result match {
-            case None => None
-            case Some(s) => log(result)
-          }
-        }
+        .continually(codec.readPacket).foreach(log(_))
   }
 
 }
