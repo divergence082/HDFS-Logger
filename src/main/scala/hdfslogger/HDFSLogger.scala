@@ -18,23 +18,30 @@ class HDFSLogger(uri: String, dirPath: String, period: Int) {
 
   private val codec = new PacketInputStreamReader(
     new DataInputStream(System.in))
-  private val storage =new HStorage(uri, dirPath)
+  private val storage = new HStorage(uri, dirPath)
 
-  private val laps = period*1000
-  private var timestampPivot = System.currentTimeMillis()
+  private val laps: Long = period*1000
+  private var timestampPivot: Long = 0
 
   type Packet = (PacketType, Seq[Array[Byte]])
 
 
   /**
-   * @return Filename in format startTimestamp_stopTimestamp
+   * Changes a file to write if the time laps is over
+   *
+   * @param key Key to be stored
+   * @param value Value to be stored
    */
-  private def getFilename(): String = {
+  private def rotate(key: Writable, value: Writable): Unit = {
     if (System.currentTimeMillis() - timestampPivot >= laps) {
-      timestampPivot = System.currentTimeMillis()
-    }
+      storage.close()
 
-    timestampPivot.toString + "_" + (timestampPivot + laps).toString
+      timestampPivot = System.currentTimeMillis()
+      val filename = timestampPivot.toString + "_" +
+          (timestampPivot + laps).toString
+
+      storage.open(filename, key, value)
+    }
   }
 
 
@@ -54,7 +61,9 @@ class HDFSLogger(uri: String, dirPath: String, period: Int) {
 
         val key: LongWritable = new LongWritable(System.currentTimeMillis())
         val value: TupleWritable = new TupleWritable(writables)
-        storage.write(getFilename(), key, value)
+
+        rotate(key, value)
+        storage.write(key, value)
     }
   }
 
