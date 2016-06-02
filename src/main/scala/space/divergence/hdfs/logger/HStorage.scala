@@ -1,12 +1,6 @@
-
-
-package hdfslogger
+package space.divergence.hdfs.logger
 
 import java.net.URI
-import org.apache.commons.io.FilenameUtils
-import org.apache.hadoop.conf.Configuration
-import org.apache.hadoop.fs.{FileSystem, Path}
-import org.apache.hadoop.io.{Writable, SequenceFile}
 
 
 /**

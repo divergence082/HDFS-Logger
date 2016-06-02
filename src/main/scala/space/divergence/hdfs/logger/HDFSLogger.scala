@@ -1,12 +1,6 @@
-
-
-package hdfslogger
+package space.divergence.hdfs.logger
 
 import java.io.DataInputStream
-import org.apache.hadoop.io.{BytesWritable, LongWritable, IntWritable, Writable}
-import org.apache.hadoop.mapred.join.TupleWritable
-import ru.livetex.io.codec.PacketInputStreamReader
-import ru.livetex.io.codec.PacketType.PacketType
 
 
 /**
