@@ -53,3 +53,6 @@ lazy val hdfsLogger = Project(
     scalastyleConfig in Compile := baseDirectory.value / "project" / "scalastyle-config.xml",
     scalastyleConfig in Test := baseDirectory.value / "project" / "scalastyle-config.xml"
   )
+//  .settings(
+//    mainClass in (Compile, run) := Some("space.divergence.hdfs.logger.Logger")
+//  )
