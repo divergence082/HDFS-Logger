@@ -37,22 +37,19 @@ lazy val publishSettings = Seq(
 lazy val hdfsLogger = Project(
   id = "hdfs-logger",
   base = file("."),
-  settings = Defaults.coreDefaultSettings ++ publishSettings ++ Seq(
+  settings = Defaults.coreDefaultSettings ++ Defaults.itSettings ++ publishSettings ++ Seq(
     organization := "space.divergence",
     name := "hdfs-logger",
     version := "0.0.1",
     scalaVersion := "2.11.8",
     libraryDependencies ++= Seq(
-      "ch.qos.logback" %  "logback-classic" % "1.1.7",
-      "org.apache.hadoop" % "hadoop-client" % "2.6.0",
-      "org.scalatest"  %% "scalatest"       % "3.0.0-RC1" % "it,test")))
-  .configs( IntegrationTest )
+      "ch.qos.logback"    %  "logback-classic" % "1.1.7",
+      "org.apache.hadoop" % "hadoop-client"    % "2.6.0" exclude("org.slf4j", "slf4j-log4j12"),
+      "org.scalatest"     %% "scalatest"       % "3.0.0-RC1" % "it,test")))
+  .configs(IntegrationTest)
   .settings(
     testOptions in Test := Seq(Tests.Filter(s => s.endsWith("Test"))))
   .settings(
     scalastyleConfig in Compile := baseDirectory.value / "project" / "scalastyle-config.xml",
     scalastyleConfig in Test := baseDirectory.value / "project" / "scalastyle-config.xml"
   )
-//  .settings(
-//    mainClass in (Compile, run) := Some("space.divergence.hdfs.logger.Logger")
-//  )

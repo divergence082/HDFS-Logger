@@ -1,37 +1,47 @@
 package space.divergence.hdfs.logger
 
-import java.io.InputStream
+import java.io.{BufferedReader, InputStreamReader, InputStream}
+import org.slf4j.LoggerFactory
+import org.apache.hadoop.fs.FSDataOutputStream
 
-// uri = "hdfs://192.168.30.147:8020"
-// path = "/tmp/mySample.txt"
-class Logger(hdfsUri: String, path: String, stream: InputStream, chunkLength: Int) {
 
-  private val _hdfs = new HDFSAdapter(hdfsUri, path)
+class Logger(hdfs: HdfsAdapter) {
 
-  try {
-    Iterator.continually(_log()).takeWhile(_ != -1)
-  } finally {
-    close()
+  private val _logger = LoggerFactory.getLogger(this.getClass)
+
+  def log(path: String, stream: InputStream, chunkLength: Int): Unit = {
+    _logger.info(s"Log to ${hdfs.uri}$path by $chunkLength bytes")
+
+    val output = hdfs.output(path)
+    val chunk = new Array[Byte](chunkLength)
+
+    Iterator
+      .continually(stream.read(chunk))
+      .takeWhile(_ != -1)
+      .foreach { read =>
+        val wChunk = chunk.slice(0, read)
+        _logger.trace(s"read $read bytes from stream")
+        hdfs.write(output, wChunk, 0)
+        _logger.trace(s"wrote '${new String(wChunk)}' to hdfs")
+      }
+
+    output.close()
   }
-
-  private def _log(): Int = {
-    val bytes = new Array[Byte](chunkLength)
-    val bytesCount = stream.read(bytes)
-
-    if (bytesCount > 0) {
-      _hdfs.write(bytes)
-    }
-
-    bytesCount
-  }
-
-  def close(): Unit =
-    _hdfs.close()
 }
 
 
 object Logger {
+
+  def apply(hdfsUri: String): Logger =
+    new Logger(new HdfsAdapter(hdfsUri))
+
   def main(args: Array[String]): Unit = {
-    new Logger(args(0), args(1), System.in, args(2).toInt)
+
+    args match {
+      case Array(hdfsUri: String, hdfsPath: String, chunkLength: String) =>
+        Logger(hdfsUri).log(hdfsPath, System.in, chunkLength.toInt)
+      case _ =>
+        throw new Exception("Invalid arguments!")
+    }
   }
 }
