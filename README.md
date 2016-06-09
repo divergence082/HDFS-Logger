@@ -13,11 +13,29 @@ or
 libraryDependencies += "space.divergence" %% "hdfs-logger" % "0.0.1"
 ```
 
+
 Usage:
 ------
-- from sbt:
+- with sbt:
 ```
-tail -f /var/log/syslog | sbt "run-main space.divergence.hdfs.logger.Logger hdfs://namenode.host:9000 /stream.txt 1024"
+cat src/it/resources/test.txt | sbt "run-main space.divergence.hdfs.logger.Logger hdfs://namenode.host:9000 /space.divergence.hdfs.logger.Logger.sbt 10"
+```
+
+- with jar
+```
+sbt assembly
+cat src/it/resources/test.txt | java -jar target/scala-2.11/hdfs-logger-0.0.1.jar hdfs://namenode.host:9000 /space.divergence.hdfs.logger.Logger.jar 10
+```
+
+- in code
+```
+import java.io.FileInputStream
+import space.divergence.hdfs.logger.Logger
+
+val logger = Logger("hdfs://namenode.host:9000")
+var stream = new FileInputStream("src/it/resources/test.txt")
+
+logger.log("/space.divergence.hdfs.logger.Logger.code", stream, 10)
 ```
 
 Tests:

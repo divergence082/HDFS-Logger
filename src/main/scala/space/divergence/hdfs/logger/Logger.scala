@@ -1,8 +1,7 @@
 package space.divergence.hdfs.logger
 
-import java.io.{BufferedReader, InputStreamReader, InputStream}
+import java.io.InputStream
 import org.slf4j.LoggerFactory
-import org.apache.hadoop.fs.FSDataOutputStream
 
 
 class Logger(hdfs: HdfsAdapter) {
